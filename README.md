@@ -36,6 +36,6 @@ python Cosmo.py
 📡 Связь с Лабораторией
 Все обновления и новые проекты (Aira AI, Home Regulator) публикуются в нашем официальном канале:
 
-👉 [LingwayTM | Lab](https://www.google.com/url?sa=E&source=gmail&q=https://t.me/LingwayTM)
+👉 [LingwayTM | Lab](https://t.me/LingwayTM)
 
 Created with ❤️ for Space Explorers.
