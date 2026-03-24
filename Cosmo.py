@@ -31,7 +31,7 @@ QUIZ_DATA = [
     
 ]
 
-user_states = {}
+user_states = {} # Словарь для хранения состояния каждого пользователя (текущий вопрос и счёт)
 
 def get_quiz_markup(step):
     """Создает кнопки для текущего вопроса"""
@@ -43,22 +43,22 @@ def get_quiz_markup(step):
         markup.add(types.InlineKeyboardButton(text=option, callback_data=callback_data))
     return markup
 
-@bot.message_handler(commands=['start'])
+@bot.message_handler(commands=['start']) # Обработчик для команды /start, которая запускает викторину
 def start(message):
-    chat_id = message.chat.id
+    chat_id = message.chat.id # Получаем уникальный идентификатор чата, чтобы отслеживать состояние каждого пользователя отдельно
     user_states[chat_id] = {'score': 0, 'step': 0}
     # Отправляем приветственное сообщение с нашей главной картинкой из презентации
-    bot.send_photo(chat_id, "AgACAgIAAxkBAAIBA2nAHA-F9OemFl5uU-Eb4tirWqc0AAKxF2sbDj8BSnTNQd5HAdtFAQADAgADdwADOgQ", caption="🚀 Подключение к системе «Горизонт»... Начинаем миссию!")
+    bot.send_photo(chat_id, "AgACAgIAAxkBAAIBA2nAHA-F9OemFl5uU-Eb4tirWqc0AAKxF2sbDj8BSnTNQd5HAdtFAQADAgADdwADOgQ", caption="🚀 Подключение к системе «Горизонт»... Начинаем миссию!") 
     
     send_question(chat_id)
 
 def send_question(chat_id):
-    step = user_states[chat_id]['step']
+    step = user_states[chat_id]['step'] # Получаем текущий шаг (номер вопроса) для данного пользователя
     if step < len(QUIZ_DATA):
         question = QUIZ_DATA[step]
         question_text = f"✨ Вопрос {step + 1}/{len(QUIZ_DATA)}:\n\n{QUIZ_DATA[step]['q']}"
 
-        # 2. Используем send_photo вместо send_message
+        # 2. Используем send_photo для отправки вопроса с картинкой. В качестве caption передаем текст вопроса, а в reply_markup — кнопки с вариантами ответов.
         # caption — это текст под картинкой
         bot.send_photo(
             chat_id, 
@@ -69,7 +69,7 @@ def send_question(chat_id):
     else:
         finish_quiz(chat_id)
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith('ans_'))
+@bot.callback_query_handler(func=lambda call: call.data.startswith('ans_')) # Обработчик для нажатий на кнопки с ответами
 def handle_answer(call):
     chat_id = call.message.chat.id
     if chat_id not in user_states:
@@ -87,7 +87,7 @@ def handle_answer(call):
     # Переход к следующему вопросу
     state['step'] += 1
     
-    # 3. При работе с фото edit_message_text не сработает для текста под фото.
+    # 3. После обработки ответа удаляем кнопки, чтобы пользователь не мог изменить свой выбор, и отправляем следующий вопрос.
     # Используем edit_message_caption, чтобы убрать кнопки и обновить статус.
     try:
         bot.edit_message_caption(
@@ -102,31 +102,54 @@ def handle_answer(call):
 
 def finish_quiz(chat_id):
     score = user_states[chat_id]['score']
-    total = len(QUIZ_DATA)
+    total = len(QUIZ_DATA) # Общее количество вопросов в викторине
+    percentage = (score / total) * 100 # Вычисляем процент правильных ответов для оценки уровня пользователя
     
-    # Финальный вайб
-    result_text = f"📡 Миссия завершена!\n\nВаш результат: **{score}** из **{total}**.\n"
+    # Базовый заголовок
+    result_text = f"📡 **МИССИЯ ЗАВЕРШЕНА**\n"
+    result_text += f"--------------------------------\n\n"
+    result_text += f"📊 Анализ данных: {score} из {total} верных сигналов.\n\n"
+
+    # 5 уровней оценки
     if score == total:
-        result_text += "🚀 Вы — настоящий адмирал звездного флота!"
-    elif score > total / 2:
-        result_text += "👨‍🚀 Хороший результат, кадет."
+        result_text += "🧬 **Статус: ЛЕГЕНДА ГАЛАКТИКИ**\n"
+        result_text += "Вы показали абсолютное понимание систем. Доступ ко всем архивам LingwayTM открыт. Адмирал, флот в вашем распоряжении! 🚀"
+    
+    elif percentage >= 80:
+        result_text += "👨‍🚀 **Статус: ПИЛОТ ПЕРВОГО КЛАССА**\n"
+        result_text += "Великолепная работа. Ваша точность выше 80%. Вы готовы к самым сложным миссиям в глубоком космосе. Навигация в надежных руках!"
+    
+    elif percentage >= 50:
+        result_text += "🛰 **Статус: ОПЕРАТОР СВЯЗИ**\n"
+        result_text += "Хороший результат, кадет. Вы уверенно ориентируетесь в базе данных, но некоторые помехи всё еще мешают полной картине. Продолжайте обучение."
+    
+    elif percentage >= 25:
+        result_text += "🔧 **Статус: ТЕХНИК-СТАЖЕР**\n"
+        result_text += "Связь нестабильна. Похоже, вы только начинаете изучать карты. Рекомендуем провести калибровку знаний в нашей библиотеке."
+    
     else:
-        result_text += "🛰 Похоже, стоит изучить карты в библиотеке."
+        result_text += "⚠️ **Статус: ГРАЖДАНСКИЙ (ОШИБКА ДОСТУПА)**\n"
+        result_text += "Сигнал потерян. Вы ответили верно менее чем на четверть вопросов. Похоже, вы забрели на капитанский мостик случайно. Попробуйте еще раз!"
 
-    bot.send_message(chat_id, result_text, parse_mode="Markdown")
-    del user_states[chat_id]
+    # Добавляем финальную кнопку «Перейти в канал»
+    markup = types.InlineKeyboardMarkup()
+    btn_channel = types.InlineKeyboardButton("📡 Канал LingwayTM | Lab", url="https://t.me/LingwayTM")
+    markup.add(btn_channel)
 
-@bot.message_handler(content_types=['photo'])
+    bot.send_message(chat_id, result_text, parse_mode="Markdown", reply_markup=markup) # Отправляем результат с кнопкой и используем Markdown для форматирования текста
+    del user_states[chat_id] # Очищаем состояние пользователя после завершения викторины
+
+@bot.message_handler(content_types=['photo']) # Обработчик для получения ID фото
 def get_file_id(message):
     # Берем самую качественную версию фото [-1] и выводим её ID
     print(f"ID картинки: {message.photo[-1].file_id}")
     bot.reply_to(message, "ID этой картинки выведен в консоль!")
 
-@bot.message_handler(commands=['ps'])
+@bot.message_handler(commands=['ps']) # Команда для получения информации о разработчике
 def developer_info(message):
     chat_id = message.chat.id
     
-    # Текст плашки о тебе
+    # Текст плашки о себе разработчика, который будет отправлен вместе с фото
     info_text = (
         "<b>📂 ДОСЬЕ РАЗРАБОТЧИКА СИСТЕМЫ</b>\n"
         "------------------------------------\n"
@@ -136,16 +159,17 @@ def developer_info(message):
         "------------------------------------\n"
         "<i>«Космос — это не предел, это только начало».</i>\n\n"
         "🛰 <b>Связь с центром управления:</b> @Why_Are_You_Slow\n"
-        "Вы можете отправить отчет об ошибке или предложение по модернизации системы."
-        "------------------------------------"
+        "Вы можете отправить отчет об ошибке или предложение по модернизации системы.\n"
+        "------------------------------------ \n"
         "PS: \n"
-        "Мой ТГ-канал, где будут новости об обновлениях и других моих проектов: @Lingway_TM \n"
-        "У меня есть страничка на GitHub, где я выкладываю свои проекты и делюсь знаниями по программированию и космосу. Если вам интересно, можете заглянуть: https://github.com/Lingway-TM/Cosmo \n\n"
+        "Мой TG-канал, где будут новости об обновлениях и других моих проектов: @LingwayTM \n"
+        "У меня есть страничка на GitHub, где я выкладываю свои проекты https://github.com/Lingway-TM.\n"
+        "Если вам интересно как устроен бот а как же его код то:  https://github.com/Lingway-TM/Cosmo \n\n"
         "📡 Система «Горизонт» разработана с использованием Python и библиотеки pyTelegramBotAPI. Все права защищены © 2026"
     )
 
-    # Можно отправить просто текстом, но лучше прикрепить ту самую картинку
-    # которую мы делали в начале (иллюминатор), чтобы сохранить стиль.
+    # Отправляем фото с текстом в виде подписи
     bot.send_photo(chat_id, "AgACAgIAAxkBAAIBtmnAKz5FTShYkJgtVOWbqoboGCGNAAIFGGsbDj8BSnMzWvHnXCJqAQADAgADeAADOgQ", caption=info_text, parse_mode="HTML")
 
 bot.infinity_polling()
+
